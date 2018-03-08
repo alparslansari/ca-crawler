@@ -6,23 +6,27 @@ from urlparse import urlparse
 
 captchaUrlList = []
 allDataList = []
-courtesyStop = 10000;
+courtesyStop = 200; # If we parse .. number of urls, stop crawling
 
+# We should not crawl the same URL!
 
-# ayni urli tekrar tekrar parse etme
-filename = sys.argv[1]
+filename = sys.argv[1] # get a file name
 print filename
 
+# read the file: It should contain URLS for crawling
 file = open(filename, "r") 
 for line in file: 
    allDataList.append(line.strip())
 print "File is Loaded..."
 
+# The purpose of this function is store the page source
 def writeCaptchaData(url, cid, responseData):
     saveCFile = open('captcha_'+filename+'_'+str(cid)+'_.htm','w')
     saveCFile.write(responseData)
     saveCFile.close()
 
+# This function parses a web page to find all href
+# returns all urls as a list
 def findAllLinks(respData, url, domain, openList, closedList):
     print "Finding all related links for : " + url
     print "Domain                        : " + domain
@@ -44,7 +48,7 @@ def findAllLinks(respData, url, domain, openList, closedList):
         if(tlink.find(url) > -1):
             if not tlink in tempList:
                 tempList.append(tlink)
-                #print "adding to tempList: "+tlink
+                #print "1- adding to tempList: "+tlink
             #else:
                 #print "Duplicate URL: "+tlink
         else:
@@ -52,14 +56,17 @@ def findAllLinks(respData, url, domain, openList, closedList):
                 continue
             if tlink[0] == '/': # ilk eleman / ise
                 #print "add list " + tlink
+                if(url.find(domain)<0):
+                    print "2- Skipping: " + url
+                    continue
                 cturl = urllib2.urlparse.urljoin(url,tlink)
                 tempList.append(cturl)
-                #print "added   :" + cturl
+                #print "2- added   :" + cturl
             else: # find subdomains
                 if(tlink.find("."+domain) > -1):
                     if not tlink in tempList:
                         tempList.append(tlink)
-                        #print "adding SUBDOMAIN to tempList: "+tlink
+                        #print "3- adding SUBDOMAIN -"+domain+"- to tempList: "+tlink
                     #else:
                         #print "Duplicate URL: "+tlink
                 #else:
@@ -67,6 +74,7 @@ def findAllLinks(respData, url, domain, openList, closedList):
     print "The openList is grown by ",len(tempList)," urls"
     return tempList    
 
+# This function takes a url, retrieves it and search if it has captcha
 def crawlPage(url, cid):
     print "Crawling :"+url
     try:
@@ -88,16 +96,13 @@ def crawlPage(url, cid):
         else:
             #print "NOT FOUND!"
             return respData
-            
-
-        #saveFile = open('withHeaders.txt','w')
-        #saveFile.write(str(respData))
-        #saveFile.close()
     except Exception as e:
-        print(str(e))
-        return str(e)
+        print("ERROR!")
+        return "<html><head><title>ERROR</title></head><body></body></html>"
 
-cid = 0        
+cid = 0 # index
+
+# Loop all urls from file
 for url in allDataList:
     cid = cid + 1
     if url == '\n' or url == "" or url is None:
@@ -109,9 +114,16 @@ for url in allDataList:
         captchaUrlList.append("spambot\t"+str(cid)+"\t1\t"+url+"\t\NA\n")
     else:
         closedList = []
-        domain = urlparse(url).hostname.split('.')[1]
+        
         hostname = urlparse(url).hostname
+        if(hostname[0:4] == 'www.'):
+            domain = urlparse(url).hostname.split('.')[1]
+        else:
+            domain = urlparse(url).hostname.split('.')[0]
+        
         print "hostname: "+hostname
+        print "domain:"+domain
+        #break
         closedList.append(hostname)
         closedList.append(url)
         if url[-1:] == "/":
@@ -127,7 +139,12 @@ for url in allDataList:
                 break
             turl = tempList.pop(0)
             closedList.append(turl)
+            
+            if(turl.find(domain)<0):
+                print "----> domain: "+domain+" not found in " + turl
+                continue
             result = crawlPage(turl, cid)
+            
             if(result == 'c'):
                 captchaUrlList.append("captcha\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\t"+turl+"\n")
                 print "CAPTCHA IS FOUND"
