@@ -4,15 +4,31 @@ import sys
 from bs4 import BeautifulSoup
 from urlparse import urlparse
 
-captchaUrlList = []
-allDataList = []
-courtesyStop = 200; # If we parse .. number of urls, stop crawling
 
+
+courtesyStop = 250; # If we parse .. number of urls, stop crawling
+
+def num(s):
+    try:
+        return int(s)
+    except ValueError:
+        return 0
+        
 # We should not crawl the same URL!
 
-filename = sys.argv[1] # get a file name
-print filename
+if len(sys.argv) == 2:
+    filename = sys.argv[1] # get a file name
+    startidx = 0
+elif len(sys.argv) == 3:
+    filename = sys.argv[1] # get a file name
+    startidx = num(sys.argv[2])
+else:
+    print "Wrong syntax. Use as 'python crawler.py data.txt' or 'python crawler.py data.txt <index>'"
+    print "<index> is the starting point should be a number"
+    sys.exit()
 
+
+allDataList = []
 # read the file: It should contain URLS for crawling
 file = open(filename, "r") 
 for line in file: 
@@ -20,10 +36,20 @@ for line in file:
 print "File is Loaded..."
 
 # The purpose of this function is store the page source
-def writeCaptchaData(url, cid, responseData):
+def writeCaptchaData(cid, responseData):
     saveCFile = open('captcha_'+filename+'_'+str(cid)+'_.htm','w')
     saveCFile.write(responseData)
     saveCFile.close()
+    
+def writeErrors(err):
+    errorFile = open('error_'+filename,'a')
+    errorFile.write(err)
+    errorFile.close()
+    
+def writeReport(data):
+    reportFile = open('report_'+filename,'a')
+    reportFile.write(data)
+    reportFile.close()
 
 # This function parses a web page to find all href
 # returns all urls as a list
@@ -76,7 +102,7 @@ def findAllLinks(respData, url, domain, openList, closedList):
 
 # This function takes a url, retrieves it and search if it has captcha
 def crawlPage(url, cid):
-    print "Crawling :"+url
+    print cid, "-) Crawling :"+url
     try:
         # now, with the below headers, we defined ourselves as a simpleton who is
         # still using internet explorer.
@@ -84,20 +110,28 @@ def crawlPage(url, cid):
         headers['User-Agent'] = "Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.27 Safari/537.17"
         req = urllib2.Request(url, headers = headers)
         resp = urllib2.urlopen(req)
+        #print "->"+resp.headers.get('content-length','0')
+        if(num(resp.headers.get('content-length','0')) > 1000000):
+            print "Page size is too big"
+            err = "err:PGS->" + resp.headers['content-length'] + '\t' + url +"\n"
+            writeErrors(err)
+            return 'err'
+        print "OK"
         respData = resp.read()
         if re.search('captcha', respData, re.IGNORECASE):
-            print "Captcha is found: "+url
-            writeCaptchaData(url, cid, respData)
+            print "crawlPage:Captcha is found: "+url
+            writeCaptchaData(cid, respData)
             return 'c'
         elif re.search('spambot', respData, re.IGNORECASE):
-            print "Spambot is found: "+url
-            writeCaptchaData(url, cid, respData)
+            print "crawlPage:Spambot is found: "+url
+            writeCaptchaData(cid, respData)
             return 's'
         else:
             #print "NOT FOUND!"
             return respData
     except Exception as e:
         print("ERROR!")
+        writeErrors("ERROR\t"+url+"\n")
         return "<html><head><title>ERROR</title></head><body></body></html>"
 
 cid = 0 # index
@@ -105,13 +139,16 @@ cid = 0 # index
 # Loop all urls from file
 for url in allDataList:
     cid = cid + 1
+    if startidx > 0 and startidx > cid:
+        print "Skipping url...cid=",cid
+        break
     if url == '\n' or url == "" or url is None:
         continue
     result = crawlPage(url, cid)
     if(result == 'c'):
-        captchaUrlList.append("captcha\t"+str(cid)+"\t1\t"+url+"\tNA\n")
+        writeReport("captcha\t"+str(cid)+"\t1\t"+url+"\tNA\n")
     elif(result=='s'):
-        captchaUrlList.append("spambot\t"+str(cid)+"\t1\t"+url+"\t\NA\n")
+        writeReport("spambot\t"+str(cid)+"\t1\t"+url+"\t\NA\n")
     else:
         closedList = []
         
@@ -146,20 +183,20 @@ for url in allDataList:
             result = crawlPage(turl, cid)
             
             if(result == 'c'):
-                captchaUrlList.append("captcha\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\t"+turl+"\n")
+                writeReport("captcha\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\t"+turl+"\n")
                 print "CAPTCHA IS FOUND"
                 break
             elif(result=='s'):
-                captchaUrlList.append("spambot\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\t"+turl+"\n")
+                writeReport("spambot\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\t"+turl+"\n")
                 print "SPAM BOT IS FOUND"
                 break
+            elif(result=='err'):
+                #append url to error.txt
+                print "err found, skipping"
             else:
                 tempList2 = findAllLinks(result, turl, domain, tempList, closedList)
                 for link in tempList2:
                     tempList.append(link)
-        if(result != 'c' or result != 's'):
-            captchaUrlList.append("notfound\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\tNA\n")
-print captchaUrlList
-saveFile = open('report_'+filename,'w')
-saveFile.write("".join(captchaUrlList))
-saveFile.close()
+        if(result != 'c' and result != 's'):
+            writeReport("notfound\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\tNA\n")
+print "The END"
