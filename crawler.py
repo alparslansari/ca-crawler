@@ -4,8 +4,6 @@ import sys
 from bs4 import BeautifulSoup
 from urlparse import urlparse
 
-
-
 courtesyStop = 250; # If we parse .. number of urls, stop crawling
 
 def num(s):
@@ -57,7 +55,7 @@ def findAllLinks(respData, url, domain, openList, closedList):
     print "Finding all related links for : " + url
     print "Domain                        : " + domain
     tempList = []
-    soup = BeautifulSoup(respData, "html5lib") #BeautifulSoup.
+    soup = BeautifulSoup(respData, "html5lib", from_encoding="utf-8") #BeautifulSoup.
     for link in soup.findAll("a"):
         tlink = link.get("href")
         if (tlink in tempList) or (tlink in closedList) or (tlink in openList):
@@ -131,7 +129,10 @@ def crawlPage(url, cid):
             return respData
     except Exception as e:
         print("ERROR!")
-        writeErrors("ERROR\t"+url+"\n")
+        try:
+            writeErrors("ERROR\t"+url.decode('ascii', 'ignore')+"\n")
+        except UnicodeEncodeError:
+            writeErrors("ERROR:Unicode err\t see cid:"+str(cid)+"\n")
         return "<html><head><title>ERROR</title></head><body></body></html>"
 
 cid = 0 # index
@@ -141,7 +142,7 @@ for url in allDataList:
     cid = cid + 1
     if startidx > 0 and startidx > cid:
         print "Skipping url...cid=",cid
-        break
+        continue
     if url == '\n' or url == "" or url is None:
         continue
     result = crawlPage(url, cid)
@@ -194,9 +195,22 @@ for url in allDataList:
                 #append url to error.txt
                 print "err found, skipping"
             else:
-                tempList2 = findAllLinks(result, turl, domain, tempList, closedList)
-                for link in tempList2:
-                    tempList.append(link)
+                try:
+                    tempList2 = findAllLinks(result, turl, domain, tempList, closedList)
+                    
+                    for link in tempList2:
+                        if (courtesyStop * 10) > len(tempList):
+                            tempList.append(link)
+                    else:
+                        break
+                except Exception as e:
+                    try:
+                        writeErrors("ERROR\t"+turl.decode('ascii', 'ignore')+"\n")
+                        print str(e)
+                    except UnicodeEncodeError:
+                        writeErrors("ERROR:Unicode err\t see cid:"+str(cid)+"\n")
+                        print "ERROR in findAllLinks"
+                
         if(result != 'c' and result != 's'):
             writeReport("notfound\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\tNA\n")
 print "The END"
