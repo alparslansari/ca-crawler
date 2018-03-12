@@ -130,13 +130,13 @@ def crawlPage(url, cid):
     except Exception as e:
         print("ERROR!")
         try:
-            writeErrors("ERROR\t"+url.decode('ascii', 'ignore')+"\n")
+            writeErrors("ERROR\t"+url.decode('ascii', 'ignore')+"\t"+str(e)+"\n")
         except UnicodeEncodeError:
             writeErrors("ERROR:Unicode err\t see cid:"+str(cid)+"\n")
         return "<html><head><title>ERROR</title></head><body></body></html>"
 
 cid = 0 # index
-
+testWflag = False
 # Loop all urls from file
 for url in allDataList:
     cid = cid + 1
@@ -158,6 +158,7 @@ for url in allDataList:
             domain = urlparse(url).hostname.split('.')[1]
         else:
             domain = urlparse(url).hostname.split('.')[0]
+            testWflag = True
         
         print "hostname: "+hostname
         print "domain:"+domain
@@ -170,6 +171,13 @@ for url in allDataList:
         #print "closedList"+closedList
         tempList = []
         tempList = findAllLinks(result, url, domain, tempList, closedList)
+        
+        # Check www condition
+        if len(tempList) == 0 and testWflag:
+            tempList.append("https://www."+hostname)
+            tempList.append("http://www."+hostname)
+            print "Try crawling http|s://www."+hostname
+                
         while len(tempList) > 0:
             print "remaining urls: ",len(tempList)
             print "closed urls   : ",len(closedList)
@@ -201,8 +209,8 @@ for url in allDataList:
                     for link in tempList2:
                         if (courtesyStop * 10) > len(tempList):
                             tempList.append(link)
-                    else:
-                        break
+                        else:
+                            break
                 except Exception as e:
                     try:
                         writeErrors("ERROR\t"+turl.decode('ascii', 'ignore')+"\n")
@@ -210,7 +218,23 @@ for url in allDataList:
                     except UnicodeEncodeError:
                         writeErrors("ERROR:Unicode err\t see cid:"+str(cid)+"\n")
                         print "ERROR in findAllLinks"
+            
+            # Check www condition
+            if len(tempList) == 0 and len(closedList) < courtesyStop and testWflag:
+                tlink = "www."+hostname
+                if not tlink in closedList:
+                    tempList.append(tlink)
+                tlink = "https://www."+hostname
+                if not tlink in closedList:
+                    tempList.append(tlink)
+                tlink = "http://www."+hostname
+                if not tlink in closedList:
+                    tempList.append(tlink)
+                print "Try crawling last resort"
+
                 
         if(result != 'c' and result != 's'):
             writeReport("notfound\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\tNA\n")
+
 print "The END"
+
