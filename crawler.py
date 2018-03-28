@@ -13,25 +13,44 @@ def num(s):
         return 0
         
 # We should not crawl the same URL!
-
+regular = True
 if len(sys.argv) == 2:
     filename = sys.argv[1] # get a file name
     startidx = 0
 elif len(sys.argv) == 3:
     filename = sys.argv[1] # get a file name
     startidx = num(sys.argv[2])
+elif len(sys.argv) == 4:
+    filename = sys.argv[1]
+    startidx = num(sys.argv[2])
+    stopidx = num(sys.argv[3])
+    regular = False
 else:
     print "Wrong syntax. Use as 'python crawler.py data.txt' or 'python crawler.py data.txt <index>'"
+    print "or 'python crawler.py data.txt <index> <stop>'"
     print "<index> is the starting point should be a number"
     sys.exit()
 
 
 allDataList = []
 # read the file: It should contain URLS for crawling
-file = open(filename, "r") 
-for line in file: 
-   allDataList.append(line.strip())
-print "File is Loaded..."
+if(not regular):
+    file = open(filename, "r")
+    count = 0
+    for line in file:
+       count = count + 1
+       if count >=startidx and count <= stopidx:
+           print line.strip().split(',')[1]
+           allDataList.append(line.strip().split(',')[1])
+       elif count > stopidx:
+           break
+    print "special method: File is Loaded..."
+    filename = sys.argv[1]+"_"+sys.argv[2]+"_"+sys.argv[3]
+else:
+    file = open(filename, "r") 
+    for line in file: 
+       allDataList.append(line.strip())
+    print "File is Loaded..."
 
 # The purpose of this function is store the page source
 def writeCaptchaData(cid, responseData):
@@ -140,20 +159,24 @@ testWflag = False
 # Loop all urls from file
 for url in allDataList:
     cid = cid + 1
-    if startidx > 0 and startidx > cid:
+    if startidx > 0 and startidx > cid and regular:
         print "Skipping url...cid=",cid
         continue
     if url == '\n' or url == "" or url is None:
         continue
+    
+    if(not url[0:4] == 'http'):
+        url = "https://"+url
     result = crawlPage(url, cid)
     if(result == 'c'):
-        writeReport("captcha\t"+str(cid)+"\t1\t"+url+"\tNA\n")
+        writeReport("1\tcaptcha\t"+str(cid)+"\t1\t"+url+"\tNA\n")
     elif(result=='s'):
-        writeReport("spambot\t"+str(cid)+"\t1\t"+url+"\t\NA\n")
+        writeReport("1\tspambot\t"+str(cid)+"\t1\t"+url+"\t\NA\n")
     else:
         closedList = []
-        
+
         hostname = urlparse(url).hostname
+
         if(hostname[0:4] == 'www.'):
             domain = urlparse(url).hostname.split('.')[1]
         else:
@@ -192,11 +215,11 @@ for url in allDataList:
             result = crawlPage(turl, cid)
             
             if(result == 'c'):
-                writeReport("captcha\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\t"+turl+"\n")
+                writeReport("1\tcaptcha\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\t"+turl+"\n")
                 print "CAPTCHA IS FOUND"
                 break
             elif(result=='s'):
-                writeReport("spambot\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\t"+turl+"\n")
+                writeReport("1\tspambot\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\t"+turl+"\n")
                 print "SPAM BOT IS FOUND"
                 break
             elif(result=='err'):
@@ -234,7 +257,7 @@ for url in allDataList:
 
                 
         if(result != 'c' and result != 's'):
-            writeReport("notfound\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\tNA\n")
+            writeReport("0\tnotfound\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\tNA\n")
 
 print "The END"
 
