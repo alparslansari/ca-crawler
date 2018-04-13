@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from urlparse import urlparse
 
 courtesyStop = 250; # If we parse .. number of urls, stop crawling
+keywords = ['login', 'cart','subscribe','password','sign','register','join','auth','upload','account','registration']
 
 def num(s):
     try:
@@ -59,15 +60,35 @@ def writeCaptchaData(cid, responseData):
     saveCFile.close()
     
 def writeErrors(err):
-    errorFile = open('error_'+filename,'a')
+    errorFile = open('error_'+filename+'.txt','a')
     errorFile.write(err)
     errorFile.close()
     
 def writeReport(data):
-    reportFile = open('report_'+filename,'a')
+    reportFile = open('report_'+filename+'.txt','a')
     reportFile.write(data)
     reportFile.close()
 
+def findAllLinksSpecial(respData, url, domain, openList, closedList, specialList):
+    #tempList = []
+    print "*** in findAllLinksSpecial***"
+    soup = BeautifulSoup(respData, "html5lib", from_encoding="utf-8") #BeautifulSoup.
+    for link in soup.findAll("a"):
+        tlink = link.get("href")
+        if (tlink in specialList):
+            #print "In list, skipping " + tlink
+            continue
+        if tlink is None:
+            print "None object found, skipping..."
+            continue
+        if tlink.count("http") > 1:
+            print "Skipping :"+tlink
+            continue
+        for word in keywords:
+            if(tlink.find(word) > -1):
+                specialList.append(tlink)
+                break
+    print "Special list size:",len(specialList)
 # This function parses a web page to find all href
 # returns all urls as a list
 def findAllLinks(respData, url, domain, openList, closedList):
@@ -126,7 +147,7 @@ def crawlPage(url, cid):
         headers = {}
         headers['User-Agent'] = "Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.27 Safari/537.17"
         req = urllib2.Request(url, headers = headers)
-        resp = urllib2.urlopen(req)
+        resp = urllib2.urlopen(req, timeout=20)
         #print "->"+resp.headers.get('content-length','0')
         if(num(resp.headers.get('content-length','0')) > 1000000):
             print "Page size is too big"
@@ -192,7 +213,9 @@ for url in allDataList:
             url = url[:-1]
             closedList.append(url)
         #print "closedList"+closedList
+        specialList = []
         tempList = []
+            
         tempList = findAllLinks(result, url, domain, tempList, closedList)
         
         # Check www condition
@@ -200,12 +223,19 @@ for url in allDataList:
             tempList.append("https://www."+hostname)
             tempList.append("http://www."+hostname)
             print "Try crawling http|s://www."+hostname
-                
+        specialFlag = True
         while len(tempList) > 0:
             print "remaining urls: ",len(tempList)
             print "closed urls   : ",len(closedList)
             if len(closedList) > courtesyStop:
-                break
+                if len(specialList) > 0 and specialFlag:
+                    print "CONSIDERING SPECIAL CASES"
+                    print specialList
+                    tempList = specialList
+                    specialFlag = False
+                    courtesyStop = courtesyStop + len(specialList)
+                else:
+                    break
             turl = tempList.pop(0)
             closedList.append(turl)
             
@@ -228,7 +258,8 @@ for url in allDataList:
             else:
                 try:
                     tempList2 = findAllLinks(result, turl, domain, tempList, closedList)
-                    
+                    findAllLinksSpecial(result, url, domain, tempList, closedList, specialList)
+                    print "Special list size:",len(specialList)
                     for link in tempList2:
                         if (courtesyStop * 10) > len(tempList):
                             tempList.append(link)
