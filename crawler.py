@@ -233,7 +233,7 @@ for url in allDataList:
                     print specialList
                     tempList = specialList
                     specialFlag = False
-                    courtesyStop = courtesyStop + len(specialList)
+                    courtesyStop = courtesyStop + 100
                 else:
                     break
             turl = tempList.pop(0)
