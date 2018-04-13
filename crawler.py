@@ -228,6 +228,7 @@ for url in allDataList:
             print "remaining urls: ",len(tempList)
             print "closed urls   : ",len(closedList)
             if len(closedList) > courtesyStop:
+                print "Checking Stop conditions...."
                 if len(specialList) > 0 and specialFlag:
                     print "CONSIDERING SPECIAL CASES"
                     print specialList
@@ -235,6 +236,8 @@ for url in allDataList:
                     specialFlag = False
                     courtesyStop = courtesyStop + 100
                 else:
+                    print "Exiting..."
+                    tempList = []
                     break
             turl = tempList.pop(0)
             closedList.append(turl)
