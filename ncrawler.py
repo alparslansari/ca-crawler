@@ -350,20 +350,21 @@ for url in allDataList:
                 #append url to error.txt
                 print "err found, skipping"
             else:
-                try:
-                    tempList2 = findAllLinks(result, turl, domain, tempList, closedList)
-                    for link in tempList2:
-                        if courtesyStop > len(tempList) + len(closedList):
-                            tempList.append(link)
-                        else:
-                            break
-                except Exception as e:
+                if courtesyStop > len(tempList) + len(closedList):
                     try:
-                        writeErrors("ERROR\t"+turl.decode('ascii', 'ignore')+"\n")
-                        print str(e)
-                    except UnicodeEncodeError:
-                        writeErrors("ERROR:Unicode err\t see cid:"+str(cid)+"\n")
-                        print "ERROR in findAllLinks"
+                        tempList2 = findAllLinks(result, turl, domain, tempList, closedList)
+                        for link in tempList2:
+                            if courtesyStop > len(tempList) + len(closedList):
+                                tempList.append(link)
+                            else:
+                                break
+                    except Exception as e:
+                        try:
+                            writeErrors("ERROR\t"+turl.decode('ascii', 'ignore')+"\n")
+                            print str(e)
+                        except UnicodeEncodeError:
+                            writeErrors("ERROR:Unicode err\t see cid:"+str(cid)+"\n")
+                            print "ERROR in findAllLinks"
         if(result != 'c' and result != 's'):
             writeReport("0\tnotfound\t"+str(cid)+"\t"+str(len(closedList))+"\t"+url+"\tNA\n")
 print "The END"
