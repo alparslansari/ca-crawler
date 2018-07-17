@@ -196,7 +196,9 @@ def crawlPage(url, cid):
         try:
             writeErrors("ERROR\t"+url.decode('ascii', 'ignore')+"\t"+str(e)+"\n")
         except UnicodeEncodeError:
-            writeErrors("ERROR:Unicode err\t see cid:"+str(cid)+"\n")
+            writeErrors("ERROR:Unicode encode err\t see cid:"+str(cid)+"\n")
+        except UnicodeDecodeError:
+            writeErrors("ERROR:Unicode decode err\t see cid:"+str(cid)+"\n")
         return "<html><head><title>ERROR</title></head><body></body></html>"
 
 def countAllLinks(respData):

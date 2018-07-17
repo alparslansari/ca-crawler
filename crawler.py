@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from urlparse import urlparse
 
 courtesyStop = 250; # If we parse .. number of urls, stop crawling
-keywords = ['login', 'cart','subscribe','password','sign','register','join','auth','upload','account','registration']
+keywords = ['login','contact', 'cart','subscribe','password','sign','register','join','auth','upload','account','registration','forum','feedback','support','help','user']
 
 def num(s):
     try:
@@ -234,7 +234,7 @@ for url in allDataList:
                     print specialList
                     tempList = specialList
                     specialFlag = False
-                    courtesyStop = courtesyStop + 100
+                    courtesyStop = courtesyStop + 30
                 else:
                     print "Exiting..."
                     tempList = []
@@ -261,8 +261,9 @@ for url in allDataList:
             else:
                 try:
                     tempList2 = findAllLinks(result, turl, domain, tempList, closedList)
-                    findAllLinksSpecial(result, url, domain, tempList, closedList, specialList)
-                    print "Special list size:",len(specialList)
+                    if specialFlag and len(specialList) < 50:
+                        findAllLinksSpecial(result, url, domain, tempList, closedList, specialList)
+                        print "Special list size:",len(specialList)
                     for link in tempList2:
                         if (courtesyStop * 10) > len(tempList):
                             tempList.append(link)
